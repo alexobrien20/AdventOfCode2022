@@ -6,7 +6,7 @@
 
 int main()
 {
-    std::ifstream file("day1.txt");
+    std::ifstream file("input/day1.txt");
     if (!file)
     {
         std::cout << "Error opening file!";
