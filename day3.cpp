@@ -8,6 +8,12 @@
 int part1Answer = 0;
 int part2Answer = 0;
 
+int priority(char c)
+{
+    int offset = isupper(c) ? 38 : 96;
+    return c - offset;
+}
+
 void solvePart2(std::string a, std::string b, std::string c)
 {   
     std::set<char> aSet(a.begin(), a.end());
@@ -16,16 +22,10 @@ void solvePart2(std::string a, std::string b, std::string c)
     std::set<char> intersection;
     std::set_intersection(aSet.begin(), aSet.end(), bSet.begin(), bSet.end(),
                         std::inserter(intersection, intersection.begin()));
-    std::set<char> badge;
-    std::set_intersection(cSet.begin(), cSet.end(), intersection.begin(), intersection.end(),
-                        std::inserter(badge, badge.begin()));
-    for(auto const & c : badge)
-    {
-        if(isupper(c))
-            part2Answer += (c - 38);
-        else
-            part2Answer += (c - 96);
-    }
+    std::vector<char> badge;
+    std::set_intersection(cSet.begin(), cSet.end(), intersection.begin(),
+                        intersection.end(),std::back_inserter(badge));
+    part2Answer += priority(badge.front());
 }
 
 void solvePart1(std::string a)
@@ -39,10 +39,7 @@ void solvePart1(std::string a)
                         std::inserter(intersection, intersection.begin()));
     for(const auto & c : intersection)
     {
-        if(isupper(c))
-            part1Answer += (c - 38);
-        else
-            part1Answer += (c - 96);
+        part1Answer += priority(c);
     }
 }
 
