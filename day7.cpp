@@ -7,58 +7,63 @@
 #include <memory>
 
 long long part1Answer = 0;
-int part2Answer = 0;
-
-void r(std::unordered_map<std::string, int> ints, std::unordered_map<std::string, std::vector<std::string>> chars)
-{
-
-}
+long long part2Answer = 0;
 
 struct directory
 {
     directory() {}
     directory(std::string n) : name(n) {}
-    std::vector<std::string> nestedDirs;
+    std::unordered_map<std::string, std::shared_ptr<directory>> nestedDirs;
+    std::shared_ptr<directory> prevDir;
     long long size;
     std::string name;
 };
 
-// Check LONG long!>>!
+std::vector<long long> counts;
 
-long long getNestedSize(std::shared_ptr<directory> &currentDir, std::unordered_map<std::string, std::shared_ptr<directory>> &directories)
+long long getNestedSize(std::shared_ptr<directory> currentDir)
 {
     // If 0 then just return the size of that node
-    if(currentDir->nestedDirs.size() == 0)
-        return currentDir->size;
-    for(auto nest : currentDir->nestedDirs)
+    if (currentDir->nestedDirs.size() == 0)
     {
-        auto nestedDir = directories[nest];
-        currentDir->size += getNestedSize(nestedDir, directories);
-    }   
-    currentDir->nestedDirs.erase(currentDir->nestedDirs.begin(), currentDir->nestedDirs.end());
+        if (currentDir->size <= 100000)
+            part1Answer += currentDir->size;
+        counts.push_back(currentDir->size);
+        return currentDir->size;
+    }
+    for (const auto &[key, value] : currentDir->nestedDirs)
+    {
+        currentDir->size += getNestedSize(value);
+    }
+    currentDir->nestedDirs.clear();
+    counts.push_back(currentDir->size);
+    if (currentDir->size <= 100000)
+        part1Answer += currentDir->size;
     return currentDir->size;
 }
 
-void solvePart1(std::unordered_map<std::string, std::shared_ptr<directory>> &directories)
+void solvePart1(std::shared_ptr<directory> dirs)
 {
-    for(const auto& [key, value] : directories)
+    auto currentDir = dirs;
+    for (const auto &[key, value] : currentDir->nestedDirs)
     {
-        // Need to recurse on the number of nested.
-        for(auto nest : value->nestedDirs)
-        {
-            auto nestedDir = directories[nest];
-            std::cout << "Key " << key << " nested key " << nest << "\n";
-            value->size += getNestedSize(nestedDir, directories);
-            std::cout << "v " << value->size << "\n";
-        }
-        value->nestedDirs.erase(value->nestedDirs.begin(), value->nestedDirs.end());
-    }   
-    for(const auto& [key, value] : directories)
-    {
-        std::cout << "Key " << key << " " << value->size << "\n";
-        if(value->size <= 100000)
-            part1Answer +=value->size;
+        currentDir->size += getNestedSize(value);
     }
+    if (currentDir->size <= 100000)
+        part1Answer += currentDir->size;
+    counts.push_back(currentDir->size);
+}
+
+void solvePart2()
+{
+    long long totalSpace = 70000000;
+    long long spaceLeft = totalSpace - counts.back();
+    long long spaceNeeded = 30000000 - spaceLeft;
+    std::vector<long long> bigEnough;
+    std::copy_if(counts.begin(), counts.end(),
+                 std::back_inserter(bigEnough), [&](long long size)
+                 { return size >= spaceNeeded; });
+    part2Answer = *std::min_element(bigEnough.begin(), bigEnough.end());
 }
 
 int main()
@@ -71,39 +76,40 @@ int main()
     std::unordered_map<std::string, int> intCounts;
     int tempSum = 0;
     int level = 0;
-    std::string key = "root";
-    std::unordered_map<std::string, std::shared_ptr<directory>> dirs;
-    std::shared_ptr<directory> currentDir;
+    std::string key;
+    std::shared_ptr<directory> dirs = std::make_shared<directory>("root");
+    // std::unordered_map<std::string, std::shared_ptr<directory>> dirs;
+    std::shared_ptr<directory> currentDir = dirs;
+    dirs->nestedDirs["/"] = std::make_shared<directory>("/");
     while (std::getline(file, line))
     {
-        std::cout << line << "\n";
-        std::cout << line.substr(2, 2) << "\n";
-        if(line.substr(2, 2) == "cd" && line.find("..") == std::string::npos)
+        if (line.substr(2, 2) == "cd" && line.find("..") == std::string::npos)
         {
             key = line.substr(line.find("cd") + 3);
-            std::cout << key << "\n";
-            auto d = std::make_shared<directory>(key);
-            currentDir = d;
-            dirs[key] = d;
+            auto temp = currentDir;
+            currentDir = currentDir->nestedDirs[key];
+            currentDir->prevDir = temp;
         }
-        else if(line.find("dir") != std::string::npos)
+        else if (line.substr(2, 2) == "cd")
         {
-            std::string otherDir = line.substr(line.find("dir") + 4);
-            currentDir->nestedDirs.push_back(otherDir);
+            // Must be a cd ..
+            currentDir = currentDir->prevDir;
         }
-        else if(std::find_if(line.begin(), line.end(), ::isdigit) != line.end())
+        else if (line.find("dir") != std::string::npos)
         {
-            // std::cout << line << "\n";
+            std::string newDirKey = line.substr(line.find("dir") + 4);
+            auto newDir = std::make_shared<directory>(newDirKey);
+            currentDir->nestedDirs[newDirKey] = newDir;
+        }
+        else if (std::find_if(line.begin(), line.end(), ::isdigit) != line.end())
+        {
             long long n = std::stoll(line.substr(0, line.find(" ")));
             currentDir->size += n;
         }
     }
-    std::cout << dirs.size() << "\n";
-    for(const auto& [key, value]: dirs)
-    {
-        std::cout << value->name << " " << value->size << " num of nested " << value->nestedDirs.size() << "\n";
-    }
-    solvePart1(dirs);
+    solvePart1(dirs->nestedDirs["/"]);
+    solvePart2();
     std::cout << "Part 1 Answer " << part1Answer << "\n";
+    std::cout << "Part 2 Answer " << part2Answer << "\n";
     return 0;
 }
