@@ -38,6 +38,7 @@ void solvePart1(std::string line)
         int y = sY;
         int x = sX;
         x++;
+        // Just work it out by hand!?
         while (manHat(sX, x, sY, y) <= maxManHat)
         {
         }
